@@ -1,1 +1,3 @@
-# Simple multi-client reverse shell
+# Simple tool that provides:
+# - reverse shell
+# - camera capture
