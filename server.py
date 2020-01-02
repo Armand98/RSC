@@ -147,9 +147,10 @@ def receiveCameraData(connection):
         frame = pickle.loads(frame_data, fix_imports=True, encoding="bytes")
         frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
         cv2.imshow('ImageWindow',frame)
-        key = cv2.waitKey(1)
-        if key == ord('q'):
+        key = cv2.waitKey(33)
+        if key == 27: #Esc key to stop
             connection.send(str.encode('q', "utf-8"))
+            print("Stop signal sent")
             break
 
     cv2.destroyAllWindows()

