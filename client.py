@@ -17,9 +17,7 @@ queue = Queue()
 wyłączenie kamery powoduje nieznany błąd w komunikacji programów
 """
 
-
-#HOST = '157.245.34.67'
-HOST = '192.168.1.228'
+HOST = ''
 PORT = 5000
 
 def camera(client_socket):
