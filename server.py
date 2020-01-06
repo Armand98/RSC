@@ -52,7 +52,7 @@ def accept_connections(server_socket):
 
 # Print help info and menu of actions user can choose from
 def printMenu():
-    print('----- xMessiah menu -----')
+    print('----- RSC menu -----')
     print('list - lists server_sockets')
     print('select --number - choose a target from server_socket list and start a reverse shell')
     print('camera --number - choose a target from server_socket list and start capturing camera view')
@@ -63,7 +63,7 @@ def printMenu():
 def start_turtle():
     printMenu()
     while True:
-        command = input('xMessiah> ')
+        command = input('RSC> ')
         if command == 'list':
             list_connections()
         elif command == 'help':
