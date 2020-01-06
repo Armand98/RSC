@@ -7,7 +7,6 @@ import struct
 import cv2
 import pickle
 
-#HOST = '157.245.34.67'
 HOST = '0.0.0.0'
 PORT = 5000
 
